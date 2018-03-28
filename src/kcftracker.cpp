@@ -285,7 +285,10 @@ void KCFTracker::train(cv::Mat x, float train_interp_factor)
 cv::Mat KCFTracker::gaussianCorrelation(cv::Mat x1, cv::Mat x2)
 {
     using namespace FFTTools;
-    cv::Mat c = cv::Mat( cv::Size(size_patch[1], size_patch[0]), CV_32F, cv::Scalar(0) );
+
+	cv::Mat c=cv::Mat( cv::Size(size_patch[1], size_patch[0]), CV_32FC2, cv::Scalar(0) );
+	cv::Mat invser;
+	
     // HOG features
     if (_hogfeatures) {
         cv::Mat caux;
@@ -296,11 +299,12 @@ cv::Mat KCFTracker::gaussianCorrelation(cv::Mat x1, cv::Mat x2)
             x1aux = x1aux.reshape(1, size_patch[0]);
             x2aux = x2.row(i).reshape(1, size_patch[0]);
             cv::mulSpectrums(fftd(x1aux), fftd(x2aux), caux, 0, true); 
-            caux = fftd(caux, true);
-            rearrange(caux);
-            caux.convertTo(caux,CV_32F);
-            c = c + real(caux);
+            c = c+caux;
         }
+         invser = fftd(c, true);
+		 rearrange(invser);
+		 invser.convertTo(invser,CV_32F);
+		 invser=real(invser);
     }
     // Gray features
     else {
@@ -310,7 +314,7 @@ cv::Mat KCFTracker::gaussianCorrelation(cv::Mat x1, cv::Mat x2)
         c = real(c);
     }
     cv::Mat d; 
-    cv::max(( (cv::sum(x1.mul(x1))[0] + cv::sum(x2.mul(x2))[0])- 2. * c) / (size_patch[0]*size_patch[1]*size_patch[2]) , 0, d);
+   cv::max(( (cv::sum(x1.mul(x1))[0] + cv::sum(x2.mul(x2))[0])- 2. * invser) / (size_patch[0]*size_patch[1]*size_patch[2]) , 0, d);
 
     cv::Mat k;
     cv::exp((-d / (sigma * sigma)), k);
